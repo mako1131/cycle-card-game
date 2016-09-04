@@ -5,7 +5,7 @@ const Game = function(players){
 		action: 'default_state',
 		timestamp: Date.now().toString(),
 		turn: 0,
-		activeUserID: '',
+		activeUserID: players[0].id,
 		deck: [],
 		stack: [],
 		playerHand: players.reduce((all,player)=>{all[player.id]=[]; return all}, {}),
@@ -62,67 +62,66 @@ const Game = function(players){
 		)
 	}
 
-	const manageTurn = (dataset$) => 
-		dataset$.map(obj => {
-			if(obj.action === 'end_turn') 
-				return handleEndTurn(obj.userID)
-			return {};
+	const manageTurn = (dataset$) => dataset$
+		.map(dataset => {
+			if(dataset.action === 'start_game') 
+				return handleStartGame(dataset)
+			if(dataset.action === 'end_turn') 
+				return handleEndTurn(dataset)
+			return availableActions();
 		})
-		/*example
-		{
-			{
-				1:[
-					{action:'end_turn'}
-					{turn: 1}
-				],
-				2:[
-					
-				]
-			}	
-		}
-		*/
 
+	const availableActions = state => {
+		const newState = state || getState()
+		return newState.players
+		.map( player => {
+			if(player.id == newState.activeUserID) 
+				return {
+					user: player,
+					actions: [{action:'end_turn'}],
+					turn: newState.turn
+				}
+			return {
+				user: player,
+				actions: [],
+				turn: newState.turn
+			}
+		})		
+	}
+	
+	const handleStartGame = (dataset$) => {
+		const newState = cloneState('start_game');
+		newState.turn++;
+		rememberState(newState);
+
+		return availableActions(newState)
+	}
 	
 
-	const handleEndTurn = (userID) => {
-		//create new state
-		const newState = cloneState('end_turn');
-		//increase turn
+	const handleEndTurn = (dataset$) => {
+		const newState = cloneState();
 		newState.turn++;
-		//set next active player
-		const activeUserIndex = newState.players.findIndex( user => user.userID === newState.activeUserID );	
-		const activeUserIndexModulo = activeUserIndex % newState.players.length;
-		newState.activeUserID = newState.players[activeUserIndexModulo];
+		// //set next active player
+		const activeUserIndex = newState.players.findIndex( user => user.id === newState.activeUserID );
+		newState.activeUserID = newState.players[activeUserIndex+1 > (newState.players.length -1) ? 0 : activeUserIndex+1].id;
 
-		//remember new state
 		rememberState(newState)
-		//generate actions
-		const ret = {};
-		const activePlayerID = newState.activeUserID;
-		const actions = newState.players.map( player => {
-			if(player.userID != activePlayerID){
-				return [{turn: newState.turn}]
-			}else{
-				return [{action: 'endTurn'}, {turn: newState.turn}]
-			}
-		})
+
+		return availableActions(newState)
 	}
+
 
 	const startGame = () => {
 		generateDeck();
 		deal();
 	}
 
-
-
 	//... 
 
-	const retObj = {
-		startGame, 
-		manageTurn
+	return {
+		startGame,
+		manageTurn,
 	}
-
-	return retObj
 }
 
 export default Game

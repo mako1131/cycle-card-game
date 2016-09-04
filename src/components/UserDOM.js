@@ -4,7 +4,7 @@ import isolate from '@cycle/isolate';
 
 
 function UserDOM(userID, aAction$) {
-	console.log(aAction$)
+	console.log(userID)
 	const vTree$ = aAction$
 		.map( aAction => {
 			const endTurnAvailable = aAction.filter( a => a.action == 'end_turn').length > 0;
